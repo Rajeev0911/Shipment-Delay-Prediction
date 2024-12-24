@@ -1,0 +1,55 @@
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report
+import joblib
+import pandas as pd
+
+# Loading the data
+data = pd.read_csv('data.csv')
+
+# Data Preparation & Exploration
+data['Vehicle Type'].fillna(data['Vehicle Type'].mode()[0], inplace=True)
+
+# Convert 'Shipment Date' to datetime and create new features
+data['Shipment Date'] = pd.to_datetime(data['Shipment Date'], errors='coerce')
+data['Month'] = data['Shipment Date'].dt.month
+data['Day'] = data['Shipment Date'].dt.day
+data['Weekday'] = data['Shipment Date'].dt.weekday
+
+# Encoding categorical variables
+categorical_columns = ['Vehicle Type', 'Origin', 'Destination', 'Weather Conditions', 'Traffic Conditions']
+le = LabelEncoder()
+
+for col in categorical_columns:
+    data[col] = le.fit_transform(data[col])
+
+# Target Variable: Convert 'Delayed' to numeric
+data['Delayed'] = data['Delayed'].map({'Yes': 1, 'No': 0})
+
+# Dropping irrelevant columns
+X = data.drop(columns=['Delayed', 'Shipment ID', 'Shipment Date', 'Planned Delivery Date', 'Actual Delivery Date'])
+y = data['Delayed']
+
+# Splitting data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Model Development
+
+# Logistic Regression
+lr_model = LogisticRegression()
+lr_model.fit(X_train, y_train)
+y_pred_lr = lr_model.predict(X_test)
+
+# Random Forest
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+y_pred_rf = rf_model.predict(X_test)
+
+# Evaluating Models
+print("Logistic Regression:\n", classification_report(y_test, y_pred_lr))
+print("Random Forest:\n", classification_report(y_test, y_pred_rf))
+
+# Save the Random Forest model
+joblib.dump(rf_model, "shipment_delay_predictor_model.pkl")
